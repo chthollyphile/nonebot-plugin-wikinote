@@ -13,7 +13,7 @@ import re
 
 account = "" 
 password = ""
-quicknote = "盐柱"
+quicknote = "" #/记录 写入的词条
 URL = "https://www.mediawiki.org/api.php" # /API.php
 record = on_command("记录", priority=5)
 write = on_command("写入", priority=6)
