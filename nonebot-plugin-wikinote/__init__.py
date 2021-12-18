@@ -86,7 +86,7 @@ async def get_write(args: str, title: str): # mediaWiki API
     CSRF_TOKEN = DATA['query']['tokens']['csrftoken']
 
     Hello = args
-    content = "<br><br>" + Hello
+    content = "<p>" + Hello + "</p>"
 
     # Step 4: POST request to edit a page
     PARAMS_3 = {
