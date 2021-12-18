@@ -13,10 +13,11 @@ import re
 
 account = "" 
 password = ""
-quicknote = "" #/记录 写入的词条
-URL = "https://www.mediawiki.org/api.php" # /API.php
+quicknote = "" # quicknote页面标题
+URL = "" # https://www.mediawiki.org/api.php
 record = on_command("记录", priority=5)
 write = on_command("写入", priority=6)
+search = on_command("搜索", priority=4)
 
 # /记录
 @record.handle()
@@ -96,3 +97,36 @@ async def get_write(args: str, title: str): # mediaWiki API
         "appendtext": content
     }
     R = S.post(URL, data=PARAMS_3)
+
+# /搜索
+@search.handle()
+async def handle_first_receive(bot: Bot, event: Event, state: T_State):
+    args = str(event.get_message()).strip()
+    if args:
+        state["args"] = args
+@search.got("args", prompt="搜索什么内容？") # get state["arg"] in case user sends an empty msg.
+async def handle_args(bot: Bot, event: Event, state: T_State):
+    args = state["args"]
+    args_search = await ssearch(args) # 防重名
+    await search.finish(args_search)
+
+async def ssearch(args):
+    S = requests.Session()
+    PARAMS = {
+                "action": "query",
+                "format": "json",
+                "list": "search",
+                "srsearch": args,
+                "srwhat": "text",
+            }
+    DATA = S.get(url=URL, params=PARAMS).json()
+    result = ""
+    list = DATA['query']['search']
+    for item in list:
+        result = result + item['title'] + " : " + item["snippet"]
+    result = re.sub(r'<.*?>', "", result)
+    if not result:
+        return f"未找到结果"
+    else:
+        results = result.replace("&lt;/p&gt;&lt;p&gt;","...")
+        return results.strip()
