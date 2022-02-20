@@ -220,9 +220,9 @@ async def snippets(args):
                 "format":"json"
             }
     DATA = S.get(url=URL, params=PARAMS).json()
-    dict = DATA['parse']
+    try:
+        dict = DATA['parse']
+    except KeyError:
+        return f"请给出典中典的完整标题"
     result = dict['wikitext']
-
-    if not result:
-        return f"未找到结果"
     return result.strip()
