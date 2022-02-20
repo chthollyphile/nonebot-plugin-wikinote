@@ -18,6 +18,8 @@ URL = "" # https://www.mediawiki.org/api.php
 record = on_command("记录", priority=5)
 write = on_command("写入", priority=6)
 search = on_command("搜索", priority=4)
+snippet = on_command("典中典", priority=5)
+write_snippet = on_command("典",priority=4)
 
 # /记录
 @record.handle()
@@ -98,6 +100,49 @@ async def get_write(args: str, title: str): # mediaWiki API
     }
     R = S.post(URL, data=PARAMS_3)
 
+async def get_write1(args: str, title: str): # mediaWiki API
+    S = requests.Session() 
+    # Step 1: GET request to fetch login token
+    PARAMS_0 = {
+        "action": "query",
+        "meta": "tokens",
+        "type": "login",
+        "format": "json"
+    }
+    R = S.get(url=URL, params=PARAMS_0)
+    DATA = R.json()
+    LOGIN_TOKEN = DATA['query']['tokens']['logintoken']
+    # Step 2: POST request to log in. 
+    PARAMS_1 = {
+        "action": "login",
+        "lgname": account,
+        "lgpassword": password,
+        "lgtoken": LOGIN_TOKEN,
+        "format": "json"
+    }
+    R = S.post(URL, data=PARAMS_1)
+    # Step 3: GET request to fetch CSRF token
+    PARAMS_2 = {
+        "action": "query",
+        "meta": "tokens",
+        "format": "json"
+    }
+    R = S.get(url=URL, params=PARAMS_2)
+    DATA = R.json()
+    CSRF_TOKEN = DATA['query']['tokens']['csrftoken']
+
+    content = args
+
+    # Step 4: POST request to edit a page
+    PARAMS_3 = {
+        "action": "edit",
+        "title": title,
+        "token": CSRF_TOKEN,
+        "format": "json",
+        "appendtext": content
+    }
+    R = S.post(URL, data=PARAMS_3)
+
 # /搜索
 @search.handle()
 async def handle_first_receive(bot: Bot, event: Event, state: T_State):
@@ -130,3 +175,54 @@ async def ssearch(args):
     else:
         results = result.replace("&lt;/p&gt;&lt;p&gt;","...")
         return results.strip()
+
+# /典中典
+@write_snippet.handle()
+async def handle_first_receive(bot: Bot, event: Event, state: T_State):
+    raw = str(event.get_message()).strip()
+    titles = re.match("#(.+?)#", raw)  # 使用 #标题# 来传入词条标题
+    if titles:
+        titles = titles.group()
+        title = re.sub("#","",titles)
+        args = raw.replace(titles,"")
+    else:
+        title  = None
+    if title:
+        state["args"] = args
+        state["title"] = title
+
+@write_snippet.got("title", prompt="请告知典中典的标题")
+@write_snippet.got("args", prompt="请告知典中典的内容")
+async def handle_args(bot: Bot, event: Event, state: T_State):
+    args = state["args"]
+    title = state["title"] 
+    args_write = await get_write1(args,title)
+    await write_snippet.finish(args_write)
+
+@snippet.handle()
+async def handle_first_receive(bot: Bot, event: Event, state: T_State):
+    args = str(event.get_message()).strip()
+    if args:
+        state["args"] = args
+@snippet.got("args", prompt="要看哪篇典中典？") # get state["arg"] in case user sends an empty msg.
+async def handle_args(bot: Bot, event: Event, state: T_State):
+    args = state["args"]
+    args_search = await snippets(args)
+    await snippet.finish(args_search)
+
+async def snippets(args):
+    S = requests.Session()
+    PARAMS = {
+                "action": "parse",
+                "page": args,
+                "prop": "wikitext",
+                "formatversion":"2",
+                "format":"json"
+            }
+    DATA = S.get(url=URL, params=PARAMS).json()
+    dict = DATA['parse']
+    result = dict['wikitext']
+
+    if not result:
+        return f"未找到结果"
+    return result.strip()
