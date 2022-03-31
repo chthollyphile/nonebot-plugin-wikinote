@@ -52,7 +52,7 @@ async def handle_first_receive(bot: Bot, event: Event, state: T_State):
 @write.got("args", prompt="请告知需要写入的内容")
 async def handle_args(bot: Bot, event: Event, state: T_State):
     args = state["args"]
-    title = state["title"] 
+    title = state["title"]
     args_write = await get_write(args,title)
     await write.finish(args_write)
 
@@ -223,6 +223,27 @@ async def snippets(args):
     try:
         dict = DATA['parse']
     except KeyError:
-        return f"请给出典中典的完整标题"
+        return f'没有找到标题为"'+args+'"的词条'+pfsearch(args)
     result = dict['wikitext']
     return result.strip()
+
+def pfsearch(args):
+    S = requests.Session()
+    PARAMS = {
+    "action": "query",
+    "format": "json",
+    "list": "search",
+    "srsearch": args,
+    "srwhat": "title"
+    }
+    
+    R = S.get(url=URL, params=PARAMS)
+    DATA = R.json()
+    result = ""
+    list = DATA['query']['search']
+    for item in list:
+        result = result + item['title'] + " | "
+    if not result:
+        return result
+    else:
+        return ",也许您要找的是："+result.strip()
