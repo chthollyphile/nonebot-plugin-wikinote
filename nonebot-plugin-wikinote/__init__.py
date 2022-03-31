@@ -3,6 +3,7 @@ from nonebot.rule import to_me
 from nonebot.typing import T_State
 from nonebot.adapters import Bot, Event
 
+from urllib import parse
 import requests
 import re
 
@@ -14,12 +15,13 @@ import re
 account = "" 
 password = ""
 quicknote = "" # quicknote页面标题
-URL = "" # https://www.mediawiki.org/api.php
+site = "" # https://www.mediawiki.org/
 record = on_command("记录", priority=5)
 write = on_command("写入", priority=6)
 search = on_command("搜索", priority=4)
 snippet = on_command("典中典", priority=5)
 write_snippet = on_command("典",priority=4)
+URL = site+"api.php"
 
 # /记录
 @record.handle()
@@ -225,7 +227,11 @@ async def snippets(args):
     except KeyError:
         return f'没有找到标题为"'+args+'"的词条'+pfsearch(args)
     result = dict['wikitext']
-    return result.strip()
+    if len(result)<=1665:
+        return result.strip()
+    else:
+        uri = parse.quote(args)
+        return f'词条过长，请自行前往'+site+'index.php?title='+uri 
 
 def pfsearch(args):
     S = requests.Session()
